@@ -1,0 +1,15 @@
+# Render Blueprint - lets Render create the web service from this repository.
+# Render dashboard -> New -> Blueprint -> pick this GitHub repo.
+services:
+  - type: web
+    name: phishguard
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/status
+    autoDeploy: true
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false   # Render asks you for the value; it is never stored in Git
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash

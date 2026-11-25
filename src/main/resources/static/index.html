@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PhishGuard - Multimodal Phishing Detection</title>
+  <meta name="description" content="Detect phishing in emails, images and voice calls with a rule engine and Gemini AI.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%2306b6d4'/%3E%3Cpath d='M12 19.5s6-2.8 6-7.6V6.6L12 4.2 6 6.6v5.3c0 4.8 6 7.6 6 7.6z' fill='none' stroke='white' stroke-width='1.8'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style type="text/tailwindcss">
+    @theme {
+      --color-navy: #0a101f;
+      --color-sidebar: #070c18;
+      --color-card: #111a2e;
+      --color-card2: #17223b;
+      --color-field: #0c1425;
+      --color-line: #24324f;
+      --color-ink: #e8eefc;
+      --color-muted: #8a98b4;
+      --color-dim: #5c6a88;
+      --color-accent: #22d3ee;
+      --color-accent2: #3b82f6;
+      --color-danger: #f85149;
+      --color-warn: #fb923c;
+      --color-safe: #34d399;
+      --font-sans: "Inter", "Segoe UI", system-ui, sans-serif;
+    }
+  </style>
+  <style>
+    :root { color-scheme: dark; }
+    body { background: #0a101f; color: #e8eefc; font-family: "Inter", "Segoe UI", system-ui, sans-serif; }
+    ::selection { background: rgba(34, 211, 238, .35); }
+    * { scrollbar-width: thin; scrollbar-color: #34446a transparent; }
+
+    /* ---------- building blocks ---------- */
+    .card { background: #111a2e; border: 1px solid #24324f; border-radius: 20px; }
+    .card-pad { padding: 22px 24px; }
+    .caption { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #8a98b4; }
+    .field { width: 100%; background: #0c1425; border: 1px solid #24324f; border-radius: 14px; color: #e8eefc;
+             padding: 11px 14px; font-size: 14px; outline: none; transition: border-color .15s, box-shadow .15s; }
+    .field::placeholder { color: #5c6a88; }
+    .field:focus { border-color: rgba(34, 211, 238, .7); box-shadow: 0 0 0 3px rgba(34, 211, 238, .12); }
+    textarea.field { resize: vertical; line-height: 1.55; }
+    .field-icon { position: relative; }
+    .field-icon > span { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); display: flex; color: #5c6a88; pointer-events: none; }
+    .field-icon:focus-within > span { color: #22d3ee; }
+    .field-icon > .field { padding-left: 42px; }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 9px; height: 42px; padding: 0 18px;
+           border-radius: 12px; font-weight: 700; font-size: 13.5px; transition: filter .15s, background .15s, border-color .15s, transform .05s;
+           cursor: pointer; white-space: nowrap; border: 1px solid transparent; }
+    .btn:active { transform: translateY(1px); }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-primary { background: linear-gradient(135deg, #0891b2, #2563eb); color: #fff; box-shadow: 0 6px 20px -8px rgba(34, 211, 238, .55); }
+    .btn-primary:hover:not(:disabled) { filter: brightness(1.12); }
+    .btn-secondary { background: #17223b; border-color: #24324f; color: #e8eefc; }
+    .btn-secondary:hover:not(:disabled) { border-color: rgba(34, 211, 238, .6); }
+    .btn-danger { background: rgba(248, 81, 73, .12); border-color: rgba(248, 81, 73, .5); color: #ffa39e; }
+    .btn-danger:hover:not(:disabled) { background: rgba(248, 81, 73, .2); }
+    .btn-ghost { color: #8a98b4; }
+    .btn-ghost:hover:not(:disabled) { color: #e8eefc; background: rgba(255, 255, 255, .05); }
+    .btn-sm { height: 34px; padding: 0 12px; font-size: 12.5px; border-radius: 10px; }
+
+    .pill { --c: #8a98b4; display: inline-flex; align-items: center; gap: 7px; padding: 4px 11px; border-radius: 999px; font-size: 11.5px;
+            font-weight: 700; letter-spacing: .04em; white-space: nowrap; color: var(--c);
+            background: color-mix(in srgb, var(--c) 13%, transparent); border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); }
+    .pill .dot { width: 6px; height: 6px; border-radius: 99px; background: var(--c); }
+    .badge-icon { --c: #22d3ee; display: grid; place-items: center; border-radius: 12px; color: var(--c);
+                  background: linear-gradient(135deg, color-mix(in srgb, var(--c) 22%, transparent), color-mix(in srgb, var(--c) 6%, transparent));
+                  border: 1px solid color-mix(in srgb, var(--c) 38%, transparent); flex-shrink: 0; }
+
+    .nav-item { display: flex; align-items: center; gap: 13px; width: calc(100% - 28px); margin: 2px 14px; padding: 11px 14px; border-radius: 12px;
+                color: #8a98b4; font-size: 14.5px; font-weight: 500; position: relative; transition: background .15s, color .15s; text-align: left; }
+    .nav-item:hover { background: rgba(255, 255, 255, .045); color: #e8eefc; }
+    .nav-item.active { color: #e8eefc; font-weight: 700; background: linear-gradient(90deg, rgba(34, 211, 238, .18), rgba(59, 130, 246, .05));
+                       box-shadow: inset 0 0 0 1px rgba(34, 211, 238, .28); }
+    .nav-item.active svg { color: #22d3ee; }
+    .nav-item.active::before { content: ""; position: absolute; left: -14px; top: 10px; bottom: 10px; width: 4px; border-radius: 0 4px 4px 0; background: #22d3ee; }
+    .tab-chip { padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: #8a98b4; border: 1px solid #24324f; white-space: nowrap; }
+    .tab-chip.active { color: #0a101f; background: #22d3ee; border-color: #22d3ee; }
+
+    .dropzone { border: 1.5px dashed rgba(34, 211, 238, .45); border-radius: 16px; background: #0c1425; cursor: pointer;
+                transition: border-color .15s, background .15s; }
+    .dropzone:hover, .dropzone.drag { border-color: #22d3ee; background: rgba(34, 211, 238, .06); }
+    .sample-chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 11px; border-radius: 10px; font-size: 12.5px; font-weight: 600;
+                   color: #c7d2ea; background: #17223b; border: 1px solid #24324f; transition: border-color .15s; }
+    .sample-chip:hover { border-color: rgba(34, 211, 238, .6); color: #fff; }
+
+    .row { background: #0d1529; border: 1px solid #1e2b46; border-radius: 14px; padding: 12px 14px; display: flex; gap: 12px; align-items: flex-start; }
+    .row-icon { --c: #22d3ee; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; flex-shrink: 0; color: var(--c);
+                background: color-mix(in srgb, var(--c) 15%, transparent); }
+    .mono { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; }
+    .scroll-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+    .scroll-thin::-webkit-scrollbar-thumb { background: #34446a; border-radius: 8px; }
+
+    /* ---------- gauge ---------- */
+    .gauge-track { fill: none; stroke: #212e4b; stroke-width: 14; stroke-linecap: round; }
+    .gauge-value, .gauge-glow { fill: none; stroke-linecap: round; transition: stroke-dashoffset 1s cubic-bezier(.2, .8, .2, 1), stroke .4s; }
+    .gauge-value { stroke-width: 14; }
+    .gauge-glow { stroke-width: 24; opacity: .18; }
+    .gauge-tick { stroke: rgba(138, 152, 180, .35); stroke-width: 1.6; stroke-linecap: round; }
+    .gauge-num { font: 800 52px "Inter", "Segoe UI", sans-serif; fill: #e8eefc; }
+    .gauge-cap { font: 700 13px "Inter", "Segoe UI", sans-serif; letter-spacing: .06em; }
+
+    .bar-track { background: #212e4b; border-radius: 99px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 99px; transition: width .9s cubic-bezier(.2, .8, .2, 1); }
+
+    .fade-in { animation: fade .35s ease-out both; }
+    @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .spin { animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .pulse-dot { animation: pulse 1.8s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c) 60%, transparent); } 50% { box-shadow: 0 0 0 6px transparent; } }
+    .flash { animation: flash 1.6s ease-out; }
+    @keyframes flash { 0% { box-shadow: 0 0 0 3px rgba(34, 211, 238, .6); } 100% { box-shadow: 0 0 0 0 transparent; } }
+
+    .banner { background: radial-gradient(120% 140% at 85% 120%, rgba(34, 211, 238, .16), transparent 55%),
+                          linear-gradient(120deg, #0d2f56, #10182e 70%); border: 1px solid rgba(34, 211, 238, .25); border-radius: 22px; }
+    table.history { width: 100%; border-collapse: separate; border-spacing: 0; }
+    table.history th { position: sticky; top: 0; background: #0c1425; z-index: 1; text-align: left; padding: 13px 16px; font-size: 11px;
+                       letter-spacing: .1em; text-transform: uppercase; color: #8a98b4; border-bottom: 1px solid #24324f; }
+    table.history td { padding: 12px 16px; border-bottom: 1px solid #1c2842; font-size: 13px; vertical-align: middle; }
+    table.history tbody tr:nth-child(even) td { background: #131d33; }
+    table.history tbody tr:hover td { background: #18335a; }
+  </style>
+</head>
+<body class="min-h-screen antialiased">
+<div class="flex min-h-screen">
+
+  <!-- ================= SIDEBAR ================= -->
+  <aside class="hidden lg:flex w-64 shrink-0 flex-col bg-sidebar border-r border-line sticky top-0 h-screen">
+    <div class="flex items-center gap-3 px-6 pt-7 pb-7">
+      <div class="w-11 h-11 rounded-2xl grid place-items-center text-white shadow-[0_0_24px_-4px_rgba(34,211,238,.7)]"
+           style="background:linear-gradient(135deg,#22d3ee,#3b82f6)" data-icon="shield" data-size="22"></div>
+      <div>
+        <div class="text-xl font-extrabold tracking-tight">PhishGuard</div>
+        <div class="text-xs text-muted">Multimodal Detection</div>
+      </div>
+    </div>
+    <nav class="flex-1 overflow-y-auto">
+      <div class="caption px-7 pb-2 !text-dim">Main menu</div>
+      <button class="nav-item" data-nav="dashboard"><span data-icon="dashboard"></span>Dashboard</button>
+      <div class="caption px-7 pt-5 pb-2 !text-dim">Scanners</div>
+      <button class="nav-item" data-nav="email"><span data-icon="email"></span>Email Scanner</button>
+      <button class="nav-item" data-nav="image"><span data-icon="image"></span>Image Scanner</button>
+      <button class="nav-item" data-nav="voice"><span data-icon="voice"></span>Voice Scam Report</button>
+      <div class="caption px-7 pt-5 pb-2 !text-dim">Records</div>
+      <button class="nav-item" data-nav="history"><span data-icon="history"></span>Scan History</button>
+    </nav>
+    <div class="m-4 card !rounded-2xl p-4 flex items-center gap-3">
+      <span class="text-accent" data-icon="shield" data-size="20"></span>
+      <div>
+        <div class="text-[12.5px] font-bold">Phishing Detection System</div>
+        <div class="text-[11px] text-muted" id="footerEngine">v2.0 | Hybrid engine</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= MAIN ================= -->
+  <div class="flex-1 min-w-0 flex flex-col">
+    <header class="sticky top-0 z-30 bg-navy/85 backdrop-blur border-b border-line">
+      <div class="flex items-center gap-4 px-5 lg:px-8 py-4">
+        <div class="lg:hidden w-9 h-9 rounded-xl grid place-items-center text-white" style="background:linear-gradient(135deg,#22d3ee,#3b82f6)"
+             data-icon="shield" data-size="18"></div>
+        <div class="min-w-0 flex-1">
+          <h1 id="pageTitle" class="text-xl lg:text-2xl font-extrabold tracking-tight truncate">Dashboard</h1>
+          <p id="pageSubtitle" class="text-[13px] text-muted truncate hidden sm:block"></p>
+        </div>
+        <div id="engineBadge" class="pill" style="--c:#8a98b4"><span class="dot"></span>Checking engine...</div>
+      </div>
+      <div class="lg:hidden flex gap-2 overflow-x-auto px-5 pb-3 scroll-thin" id="mobileTabs">
+        <button class="tab-chip" data-nav="dashboard">Dashboard</button>
+        <button class="tab-chip" data-nav="email">Email</button>
+        <button class="tab-chip" data-nav="image">Image</button>
+        <button class="tab-chip" data-nav="voice">Voice</button>
+        <button class="tab-chip" data-nav="history">History</button>
+      </div>
+    </header>
+
+    <main class="flex-1 w-full max-w-[1440px] mx-auto px-5 lg:px-8 py-7">
+
+      <!-- ================= DASHBOARD ================= -->
+      <section data-page="dashboard" class="space-y-6">
+        <div class="banner relative overflow-hidden p-7 lg:p-8">
+          <svg class="absolute right-0 bottom-0 h-full opacity-70 pointer-events-none" viewBox="0 0 400 220" preserveAspectRatio="xMaxYMax meet" aria-hidden="true">
+            <g fill="none" stroke="#22d3ee">
+              <circle cx="300" cy="250" r="60" stroke-opacity=".28"/><circle cx="300" cy="250" r="110" stroke-opacity=".22"/>
+              <circle cx="300" cy="250" r="160" stroke-opacity=".16"/><circle cx="300" cy="250" r="210" stroke-opacity=".11"/>
+              <circle cx="300" cy="250" r="260" stroke-opacity=".07"/>
+            </g>
+            <path d="M300 250 L215 20 A250 250 0 0 1 300 0 Z" fill="#22d3ee" fill-opacity=".09"/>
+            <circle cx="190" cy="95" r="4" fill="#f85149"/><circle cx="190" cy="95" r="9" fill="#f85149" fill-opacity=".25"/>
+            <circle cx="355" cy="120" r="4" fill="#34d399"/><circle cx="355" cy="120" r="9" fill="#34d399" fill-opacity=".25"/>
+            <circle cx="268" cy="45" r="4" fill="#fb923c"/><circle cx="268" cy="45" r="9" fill="#fb923c" fill-opacity=".25"/>
+          </svg>
+          <div class="relative max-w-3xl">
+            <div class="caption !text-accent !tracking-[.16em]">Welcome back</div>
+            <h2 class="text-2xl lg:text-[30px] font-extrabold tracking-tight mt-2">Multimodal Phishing Detection</h2>
+            <p class="text-[14.5px] text-[#b0bed8] mt-3 leading-relaxed">
+              Analyse email text, embedded images and voice-call recordings for phishing and scams.
+              Every scan combines a transparent rule engine with Gemini AI and receives a 0-100 risk score with clear reasons.
+            </p>
+            <div class="flex flex-wrap gap-3 mt-5">
+              <button class="btn btn-primary" data-nav="email"><span data-icon="scan" data-size="17"></span>Start a scan</button>
+              <span class="pill self-center" id="blendInfo" style="--c:#22d3ee"><span class="dot"></span>Hybrid score: 40% rules + 60% Gemini</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5" id="statCards"></div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
+          <div class="card card-pad xl:col-span-3">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <div class="flex items-center gap-2.5 text-base font-bold"><span class="text-accent" data-icon="layers" data-size="19"></span>Multimodal Threat Assessment</div>
+                <div class="text-[12.5px] text-muted mt-1 ml-7">Average of your latest Email, Image and Voice scans in this session</div>
+              </div>
+              <span id="mmPill"></span>
+            </div>
+            <div class="flex flex-col sm:flex-row items-center gap-7 mt-5">
+              <div id="mmGauge" class="shrink-0"></div>
+              <div class="flex-1 w-full space-y-4" id="mmRows"></div>
+            </div>
+            <div class="text-[13px] text-muted mt-4 sm:ml-[187px]" id="mmFormula"></div>
+            <div class="border-t border-line mt-5 pt-4">
+              <div class="caption mb-3">Key indicators across modalities</div>
+              <div id="mmIndicators" class="grid sm:grid-cols-2 gap-x-6 gap-y-2.5 text-[13px]"></div>
+              <div class="flex flex-wrap gap-3 mt-5">
+                <button class="btn btn-primary" id="mmSave"><span data-icon="save" data-size="17"></span>Save Report</button>
+                <button class="btn btn-secondary" id="mmReset"><span data-icon="refresh" data-size="17"></span>Reset Session</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card card-pad xl:col-span-2">
+            <div class="flex items-center gap-2.5 text-base font-bold"><span class="text-accent" data-icon="pie" data-size="19"></span>Risk Distribution</div>
+            <div class="text-[12.5px] text-muted mt-1 ml-7">Share of all saved scans</div>
+            <div id="donut" class="mt-5"></div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
+          <div class="card card-pad xl:col-span-3">
+            <div class="flex items-start justify-between">
+              <div>
+                <div class="flex items-center gap-2.5 text-base font-bold"><span class="text-accent" data-icon="activity" data-size="19"></span>Recent Activity</div>
+                <div class="text-[12.5px] text-muted mt-1 ml-7">Latest scans saved to history</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" data-nav="history"><span data-icon="history" data-size="15"></span>View all</button>
+            </div>
+            <div id="recentList" class="mt-3"></div>
+          </div>
+          <div class="card card-pad xl:col-span-2">
+            <div class="flex items-center gap-2.5 text-base font-bold"><span class="text-accent" data-icon="bars" data-size="19"></span>Scans by Type</div>
+            <div class="text-[12.5px] text-muted mt-1 ml-7">How often each scanner was used</div>
+            <div id="typeChart" class="mt-6"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= EMAIL ================= -->
+      <section data-page="email" hidden>
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+          <div class="card card-pad space-y-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2.5 text-base font-bold"><span class="text-accent" data-icon="email" data-size="19"></span>Email Details</div>
+              <button class="btn btn-ghost btn-sm" id="emailSample"><span data-icon="file" data-size="15"></span><span>Load Sample</span></button>
+            </div>
+            <div>
+              <label class="caption block mb-2" for="emailSender">Sender email</label>
+              <div class="field-icon"><span data-icon="email" data-size="17"></span>
+                <input id="emailSender" class="field" placeholder="e.g. security-alert@paypa1-support.xyz" autocomplete="off"></div>
+            </div>
+            <div>
+              <label class="caption block mb-2" for="emailSubject">Email subject</label>
+              <div class="field-icon"><span data-icon="file" data-size="17"></span>
+                <input id="emailSubject" class="field" placeholder="e.g. Urgent: your account has been suspended" autocomplete="off"></div>
+            </div>
+            <div>
+              <label class="caption block mb-2" for="emailBody">Email content</label>
+              <textarea id="emailBody" class="field" rows="13" placeholder="Paste the full email text here...&#10;&#10;Tip: press Ctrl+Enter to scan."></textarea>
+            </div>
+            <div class="flex flex-wrap gap-3 pt-1">
+              <button class="btn btn-primary" id="emailScan"><span data-icon="scan" data-size="17"></span><span>Scan Email</span></button>
+              <button class="btn btn-secondary" id="emailClear"><span data-icon="x" data-size="16"></span>Clear</button>
+            </div>
+          </div>
+          <div class="card card-pad xl:sticky xl:top-28">
+            <div class="flex items-center gap-2.5 text-base font-bold mb-4"><span class="text-accent" data-icon="shield" data-size="19"></span>Analysis Result</div>
+            <div id="emailResult"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= IMAGE ================= -->
+      <section data-page="image" hidden>
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+          <div class="card card-pad space-y-4">
+            <div class="flex items-center gap-2.5 text-base font-bold"><span class="text-accent" data-icon="image" data-size="19"></span>Image &amp; Extracted Text</div>
+
+            <input type="file" id="imageInput" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" hidden>
+            <div id="imageDrop" class="dropzone p-6 text-center" tabindex="0" role="button" aria-label="Upload an image">
+              <div class="mx-auto w-14 h-14 badge-icon" data-icon="upload" data-size="24"></div>
+              <div class="font-bold mt-3">Drag &amp; drop an image, or click to browse</div>
+              <div class="text-[12.5px] text-muted mt-1">Screenshot, SMS, poster or QR code | PNG, JPG or WEBP | max 20 MB</div>
+            </div>
+            <div id="imagePreviewBox" class="hidden">
+              <div class="rounded-2xl bg-field border border-line p-3 grid place-items-center">
+                <img id="imagePreview" alt="Uploaded image preview" class="max-h-72 rounded-lg object-contain">
+              </div>
+              <div class="flex items-center justify-between gap-3 mt-2">
+                <div id="imageInfo" class="text-[12.5px] text-muted truncate"></div>
+                <button class="btn btn-ghost btn-sm" id="imageRemove"><span data-icon="x" data-size="14"></span>Remove</button>
+              </div>
+            </div>
+
+            <div>
+              <div class="caption mb-2">Try a sample</div>
+              <div class="flex flex-wrap gap-2" id="imageSamples"></div>
+            </div>
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <label class="caption" for="imageText">Text in the image</label>
+                <span id="imageTextHint" class="text-[11.5px] text-dim"></span>
+              </div>
+              <textarea id="imageText" class="field" rows="6" placeholder="Gemini reads the text automatically. You can also type it here."></textarea>
+            </div>
+            <div class="flex flex-wrap gap-3 pt-1">
+              <button class="btn btn-primary" id="imageScan"><span data-icon="scan" data-size="17"></span><span>Analyze Image</span></button>
+              <button class="btn btn-secondary" id="imageClear"><span data-icon="x" data-size="16"></span>Clear</button>
+            </div>
+          </div>
+          <div class="card card-pad xl:sticky xl:top-28">
+            <div class="flex items-center gap-2.5 text-base font-bold mb-4"><span class="text-accent" data-icon="shield" data-size="19"></span>Analysis Result</div>
+            <div id="imageResult"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= VOICE ================= -->
+      <section data-page="voice" hidden>
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+          <div class="card card-pad space-y-4">
+            <div class="flex items-center gap-2.5 text-base font-bold"><span class="text-accent" data-icon="voice" data-size="19"></span>Call Recording &amp; Transcript</div>
+            <div class="flex gap-3 rounded-2xl p-3.5 border border-accent2/40 bg-accent2/10">
+              <span class="text-[#93c5fd] mt-0.5" data-icon="info" data-size="19"></span>
+              <div class="text-[13px]">
+                <div class="font-bold">Upload a call recording or paste a transcript</div>
+                <div class="text-muted mt-0.5" id="voiceInfoText">Gemini transcribes the audio and listens for vishing red flags.</div>
+              </div>
+            </div>
+
+            <input type="file" id="audioInput" accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac" hidden>
+            <div id="audioDrop" class="dropzone p-5 text-center" tabindex="0" role="button" aria-label="Upload an audio file">
+              <div class="mx-auto w-12 h-12 badge-icon" data-icon="music" data-size="22"></div>
+              <div class="font-bold mt-3">Drag &amp; drop a call recording, or click to browse</div>
+              <div class="text-[12.5px] text-muted mt-1">MP3, WAV, OGG or M4A | max 20 MB</div>
+            </div>
+            <div id="audioBox" class="hidden rounded-2xl bg-field border border-line p-3.5">
+              <div class="flex items-center justify-between gap-3 mb-2.5">
+                <div class="flex items-center gap-2 min-w-0"><span class="text-accent" data-icon="music" data-size="16"></span>
+                  <span id="audioInfo" class="text-[12.5px] text-muted truncate"></span></div>
+                <button class="btn btn-ghost btn-sm" id="audioRemove"><span data-icon="x" data-size="14"></span>Remove</button>
+              </div>
+              <audio id="audioPlayer" controls class="w-full h-10"></audio>
+            </div>
+
+            <div>
+              <div class="caption mb-2">Try a sample</div>
+              <div class="flex flex-wrap gap-2" id="voiceSamples"></div>
+            </div>
+            <div>
+              <label class="caption block mb-2" for="voiceCaller">Caller (optional)</label>
+              <div class="field-icon"><span data-icon="voice" data-size="17"></span>
+                <input id="voiceCaller" class="field" placeholder='e.g. +91 98XXX XXX21 or "Bank customer care"' autocomplete="off"></div>
+            </div>
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <label class="caption" for="voiceTranscript">Call transcript</label>
+                <span id="voiceTextHint" class="text-[11.5px] text-dim"></span>
+              </div>
+              <textarea id="voiceTranscript" class="field" rows="7" placeholder="Paste or type what the caller said, or leave empty to let Gemini transcribe the recording."></textarea>
+            </div>
+            <div class="flex flex-wrap gap-3 pt-1">
+              <button class="btn btn-primary" id="voiceScan"><span data-icon="scan" data-size="17"></span><span>Analyze Call</span></button>
+              <button class="btn btn-secondary" id="voiceClear"><span data-icon="x" data-size="16"></span>Clear</button>
+            </div>
+          </div>
+          <div class="card card-pad xl:sticky xl:top-28">
+            <div class="flex items-center gap-2.5 text-base font-bold mb-4"><span class="text-accent" data-icon="shield" data-size="19"></span>Analysis Result</div>
+            <div id="voiceResult"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= HISTORY ================= -->
+      <section data-page="history" hidden>
+        <div class="card card-pad">
+          <div class="flex flex-col md:flex-row gap-3">
+            <div class="field-icon flex-1"><span data-icon="scan" data-size="17"></span>
+              <input id="historySearch" class="field" placeholder="Search by type, classification, sender or keyword..." autocomplete="off"></div>
+            <div class="flex gap-3">
+              <button class="btn btn-secondary" id="historyRefresh"><span data-icon="refresh" data-size="16"></span>Refresh</button>
+              <button class="btn btn-danger" id="historyClear"><span data-icon="trash" data-size="16"></span>Clear History</button>
+            </div>
+          </div>
+          <div class="mt-5 rounded-2xl border border-line overflow-auto max-h-[62vh] scroll-thin">
+            <table class="history">
+              <thead><tr><th>Date &amp; Time</th><th>Scan Type</th><th>Risk Score</th><th>Classification</th><th>Summary</th></tr></thead>
+              <tbody id="historyBody"></tbody>
+            </table>
+          </div>
+          <div class="flex flex-wrap justify-between gap-2 mt-4 text-[12.5px]">
+            <span id="historyCount" class="text-muted"></span>
+            <span class="text-dim">Stored in scan_history.csv on the server</span>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- toasts and confirm dialog -->
+<div id="toasts" class="fixed bottom-5 right-5 z-50 flex flex-col gap-3 w-[min(380px,calc(100vw-40px))]"></div>
+<div id="modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-sm p-5">
+  <div class="card card-pad w-full max-w-md fade-in">
+    <div class="flex gap-3">
+      <div class="badge-icon w-11 h-11" style="--c:#f85149" data-icon="alert" data-size="20"></div>
+      <div>
+        <div class="text-lg font-bold" id="modalTitle"></div>
+        <div class="text-[13.5px] text-muted mt-1" id="modalText"></div>
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 mt-6">
+      <button class="btn btn-secondary" id="modalCancel">Cancel</button>
+      <button class="btn btn-danger" id="modalOk">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   PhishGuard web UI - plain JavaScript, no framework.
+   Talks to the Spring Boot REST API under /api.
+   ===================================================================== */
+
+const COLORS = { danger: '#f85149', warn: '#fb923c', safe: '#34d399', accent: '#22d3ee', blue: '#3b82f6',
+                 purple: '#a78bfa', pink: '#f472b6', muted: '#8a98b4', dim: '#5c6a88' };
+const MODALITY = {
+  EMAIL: { name: 'Email', icon: 'email', color: COLORS.blue },
+  IMAGE: { name: 'Image', icon: 'image', color: COLORS.purple },
+  VOICE: { name: 'Voice', icon: 'voice', color: COLORS.accent },
+  MULTIMODAL: { name: 'Multimodal', icon: 'layers', color: COLORS.pink }
+};
+const PAGES = {
+  dashboard: ['Dashboard', 'Overview of all scans and the live multimodal threat score'],
+  email: ['Email Scanner', 'Check an email for urgent language, fake links, sender spoofing and requests for secrets'],
+  image: ['Image Scanner', 'Upload a screenshot, SMS, poster or QR code - Gemini reads it and checks for visual phishing'],
+  voice: ['Voice Scam Report', 'Upload a call recording or paste a transcript to detect vishing (voice phishing)'],
+  history: ['Scan History', 'Every scan is saved to a CSV file on the server - search, review or clear it']
+};
+
+/* ---------- icons (24x24 line icons) ---------- */
+const ICONS = {
+  dashboard: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  email: '<rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="m3 7 9 6 9-6"/>',
+  image: '<rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="8.8" cy="8.8" r="1.8"/><path d="m21 15.5-5-5L5.5 21"/>',
+  voice: '<rect x="9" y="2.5" width="6" height="11.5" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3.5M8.5 21.5h7"/>',
+  history: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
+  shield: '<path d="M12 21.5s7.5-3.5 7.5-9.5V5.5L12 2.5 4.5 5.5V12c0 6 7.5 9.5 7.5 9.5z"/><path d="m8.8 12 2.2 2.2 4.4-4.6"/>',
+  scan: '<circle cx="10.5" cy="10.5" r="7"/><path d="m20.5 20.5-5-5"/>',
+  x: '<path d="M6 6l12 12M18 6 6 18"/>',
+  upload: '<path d="M3.5 15v5.5h17V15"/><path d="M7.5 8 12 3.5 16.5 8"/><path d="M12 3.5v12"/>',
+  refresh: '<path d="M21 12a9 9 0 1 1-9-9c2.5 0 4.9 1 6.7 2.7L21 8"/><path d="M21 3v5h-5"/>',
+  trash: '<path d="M4 6.5h16M6.2 6.5l1 14h9.6l1-14M9 6.5l.6-3h4.8l.6 3M10.2 10.5l.2 6.3M13.8 10.5l-.2 6.3"/>',
+  alert: '<path d="M12 3 21.8 20H2.2z"/><path d="M12 9.5v4"/><circle cx="12" cy="17" r=".7" fill="currentColor"/>',
+  check: '<circle cx="12" cy="12" r="9.5"/><path d="m8 12.3 2.8 2.8 5.4-5.7"/>',
+  tick: '<path d="m5 12.5 4.8 4.7L19 7.5"/>',
+  info: '<circle cx="12" cy="12" r="9.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.8" r=".7" fill="currentColor"/>',
+  link: '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>',
+  layers: '<path d="m12 2.5 9.5 5-9.5 5-9.5-5z"/><path d="m2.5 12 9.5 5 9.5-5"/><path d="m2.5 16.5 9.5 5 9.5-5"/>',
+  file: '<rect x="4.5" y="2.5" width="15" height="19" rx="2.5"/><path d="M8.5 8h7M8.5 12h7M8.5 16H13"/>',
+  activity: '<path d="M22 12h-4l-3 8-6-16-3 8H2"/>',
+  pie: '<circle cx="12" cy="12" r="9"/><path d="M12 3v9l7.8 4.5"/>',
+  bars: '<path d="M6 20v-7M12 20V5M18 20v-10"/>',
+  target: '<circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/>',
+  save: '<rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M7.5 3.5v5H15v-5"/><rect x="7" y="13" width="10" height="7.5" rx="1"/>',
+  sparkles: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
+  music: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+  cpu: '<rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/>'
+};
+function icon(name, size = 18) {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
+}
+function fillIcons(root = document) {
+  root.querySelectorAll('[data-icon]').forEach(el => {
+    el.insertAdjacentHTML('afterbegin', icon(el.dataset.icon, Number(el.dataset.size || 19)));
+    el.removeAttribute('data-icon');
+  });
+}
+
+/* ---------- sample data (also used by the "Try a sample" buttons) ---------- */
+const EMAIL_SAMPLES = [
+  { label: 'High risk', sender: 'security-alert@paypa1-support.xyz', subject: 'URGENT: Your account has been suspended!!!',
+    body: 'Dear Customer,\n\nWe detected unusual activity on your PayPal account and it has been temporarily suspended. To restore access you must verify your account within 24 hours, otherwise it will be permanently closed.\n\nClick here to verify now: http://192.168.45.12/paypal/secure-login\nBackup link: bit.ly/pp-verify-acc\n\nPlease enter your password and the OTP sent to your phone to confirm your identity.\n\nPayPal Security Team' },
+  { label: 'Suspicious', sender: 'delivery-notice@parcel-track-info.com', subject: 'Delivery attempt failed',
+    body: 'Hello,\n\nWe were unable to deliver your parcel today because the address was incomplete. Please update your details within 48 hours using the link below, otherwise the parcel will be returned to the sender:\nhttps://parcel-track-info.com/redelivery\n\nA small redelivery payment of $1.99 applies.\n\nThank you,\nDelivery Team' },
+  { label: 'Prize scam', sender: 'rewards.team2291@gmail.com', subject: 'Congratulations! You have been selected',
+    body: 'Hello,\n\nCongratulations! Your email address was selected as the winner of our monthly lucky draw. You have won a cash prize of $5,000.\n\nTo claim your reward, reply with your full name and address. A small processing fee of $25 is required to release the prize.\n\nRegards,\nRewards Department' },
+  { label: 'Safe', sender: 'priya.sharma@university.edu', subject: 'Project meeting moved to Friday',
+    body: 'Hi team,\n\nThe project review meeting has been moved to Friday at 3 PM in Room 204. Please bring your progress slides and the updated test results.\n\nThe agenda is on the class portal: https://portal.university.edu/courses/cs-project\n\nThanks,\nPriya' }
+];
+const IMAGE_SAMPLES = [
+  { file: '1_high_risk_kyc_sms.png', label: 'KYC SMS', risk: COLORS.danger,
+    text: 'ALERT: Your bank KYC has expired. Your account will be blocked today. Update KYC immediately at http://kyc-update-bank.top/login and enter your card number, CVV and OTP to avoid suspension.' },
+  { file: '2_suspicious_billing_sms.png', label: 'Billing SMS', risk: COLORS.warn,
+    text: 'Your Netflix payment failed. Update your payment method to keep watching: https://netflix-billing-help.com' },
+  { file: '3_high_risk_prize_message.png', label: 'Prize message', risk: COLORS.danger,
+    text: 'Congratulations! You won a FREE iPhone 15 in our lucky draw. Pay only Rs. 99 delivery charge. Claim now: tinyurl.com/free-iphone-win' },
+  { file: '4_safe_bookstore_offer.png', label: 'Bookstore offer', risk: COLORS.safe,
+    text: 'Flat 20% off on all books this weekend at City Book Store, MG Road. Offer valid till Sunday. See you there!' }
+];
+const VOICE_SAMPLES = [
+  { audio: '1_bank_scam_call.wav', label: 'Bank scam call', risk: COLORS.danger, caller: '+91 98XXX XXX21',
+    text: 'Hello sir, I am calling from the RBI head office, bank security department. Your debit card has been blocked due to suspicious activity. To unblock it immediately, please tell me the 16 digit card number and CVV. You will receive an OTP now, please share the OTP with me. If you do not cooperate, a legal case will be filed and police will come to arrest you today.' },
+  { audio: '2_tech_support_scam_call.wav', label: 'Tech-support call', risk: COLORS.danger, caller: 'Unknown international number',
+    text: 'Hi, this is Mike from Microsoft technical support. We have detected a virus on your computer. Please download the AnyDesk app so I can get remote access and fix it. There is a one-time service charge of $199 that you can pay with a gift card.' },
+  { audio: '3_clinic_reminder_call.wav', label: 'Clinic reminder', risk: COLORS.safe, caller: 'City Clinic',
+    text: "Hi, this is Dr. Mehta's clinic calling to remind you about your appointment tomorrow at 10:30 AM. If you need to reschedule, please call the clinic reception. Thank you." },
+  { audio: null, label: 'Investment pitch (text)', risk: COLORS.warn, caller: 'Investment advisor',
+    text: 'Hello madam, we have a special investment opportunity in crypto trading. You will get guaranteed returns of 30 percent every month. Many people have doubled their money. This is a limited time offer, so just invest a small amount today.' }
+];
+
+/* ---------- small helpers ---------- */
+const $ = id => document.getElementById(id);
+const state = { ai: false, model: null, emailSample: 0, imageFile: null, audioFile: null, history: [], dashboardLoaded: false };
+
+function esc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+const riskColor = score => score >= 60 ? COLORS.danger : score >= 30 ? COLORS.warn : COLORS.safe;
+const classColor = c => c === 'HIGH RISK' ? COLORS.danger : c === 'SUSPICIOUS' ? COLORS.warn : COLORS.safe;
+const pill = (text, color) => `<span class="pill" style="--c:${color}"><span class="dot"></span>${esc(text)}</span>`;
+const formatBytes = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+function friendlyTime(dateTime) {
+  const d = new Date(String(dateTime).replace(' ', 'T'));
+  return isNaN(d) ? esc(dateTime) : d.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+async function api(path, options = {}) {
+  const response = await fetch(path, options);
+  let data = null;
+  try { data = await response.json(); } catch (e) { /* empty body */ }
+  if (!response.ok) throw new Error((data && data.error) || `Request failed (HTTP ${response.status})`);
+  return data;
+}
+
+function toast(message, type = 'error') {
+  const color = type === 'error' ? COLORS.danger : type === 'success' ? COLORS.safe : COLORS.accent;
+  const el = document.createElement('div');
+  el.className = 'card fade-in flex gap-3 items-start p-4 shadow-2xl';
+  el.style.borderColor = color + '88';
+  el.innerHTML = `<span style="color:${color}" class="mt-0.5">${icon(type === 'error' ? 'alert' : 'check', 18)}</span>
+                  <div class="text-[13.5px] leading-snug flex-1">${esc(message)}</div>`;
+  $('toasts').appendChild(el);
+  setTimeout(() => { el.style.transition = 'opacity .3s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, type === 'error' ? 6500 : 3500);
+}
+
+function askConfirm(title, text) {
+  return new Promise(resolve => {
+    $('modalTitle').textContent = title;
+    $('modalText').textContent = text;
+    $('modal').classList.replace('hidden', 'flex');
+    const close = answer => { $('modal').classList.replace('flex', 'hidden'); $('modalOk').onclick = $('modalCancel').onclick = null; resolve(answer); };
+    $('modalOk').onclick = () => close(true);
+    $('modalCancel').onclick = () => close(false);
+  });
+}
+
+function setLoading(button, loading, text) {
+  const label = button.querySelector('span:last-child');
+  if (loading) {
+    button.dataset.label = label.textContent;
+    button.disabled = true;
+    button.querySelector('svg').outerHTML = `<svg class="spin" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.2-8.6" stroke-linecap="round"/></svg>`;
+    label.textContent = text;
+  } else {
+    button.disabled = false;
+    button.querySelector('svg').outerHTML = icon('scan', 17);
+    label.textContent = button.dataset.label;
+  }
+}
+
+/* ---------- navigation (hash based, so refreshing keeps the page) ---------- */
+function showPage(page) {
+  if (!PAGES[page]) page = 'dashboard';
+  document.querySelectorAll('[data-page]').forEach(s => s.hidden = s.dataset.page !== page);
+  document.querySelectorAll('[data-nav]').forEach(b => b.classList.toggle('active', b.dataset.nav === page && !b.classList.contains('btn')));
+  $('pageTitle').textContent = PAGES[page][0];
+  $('pageSubtitle').textContent = PAGES[page][1];
+  if (page === 'dashboard') loadDashboard();
+  if (page === 'history') loadHistory();
+  window.scrollTo({ top: 0 });
+}
+document.addEventListener('click', e => {
+  const target = e.target.closest('[data-nav]');
+  if (target) { e.preventDefault(); location.hash = target.dataset.nav; }
+});
+window.addEventListener('hashchange', () => showPage(location.hash.slice(1)));
+
+/* ---------- engine badge ---------- */
+function renderEngineBadge(status) {
+  state.ai = !!status.aiEnabled;
+  state.model = status.model;
+  const badge = $('engineBadge');
+  if (state.ai) {
+    badge.style.setProperty('--c', COLORS.safe);
+    badge.innerHTML = `<span class="dot pulse-dot"></span>${icon('sparkles', 14)}<span>Gemini Multimodal API active</span>
+                       <span class="hidden md:inline font-medium opacity-75 normal-case">| ${esc(status.model)}</span>`;
+    badge.title = 'Hybrid detection: 40% rule engine + 60% Gemini';
+    $('footerEngine').textContent = 'v2.0 | Gemini + rule engine';
+    $('blendInfo').innerHTML = '<span class="dot"></span>Hybrid score: 40% rules + 60% Gemini';
+  } else {
+    badge.style.setProperty('--c', COLORS.warn);
+    badge.innerHTML = `<span class="dot"></span>${icon('cpu', 14)}<span>Offline Rule-Engine Fallback</span>`;
+    badge.title = 'GEMINI_API_KEY is not set - only the built-in rule engine is used';
+    $('footerEngine').textContent = 'v2.0 | Offline rule engine';
+    $('blendInfo').style.setProperty('--c', COLORS.warn);
+    $('blendInfo').innerHTML = '<span class="dot"></span>Offline mode: rule engine only';
+    $('voiceInfoText').textContent = 'Offline mode: audio cannot be transcribed - please type or paste the transcript.';
+  }
+  updateHints();
+}
+function updateHints() {
+  $('imageTextHint').textContent = state.ai ? 'Auto-filled by Gemini after analysis' : 'Offline mode: type the text you see';
+  $('voiceTextHint').textContent = state.ai ? 'Auto-filled by Gemini from the recording' : 'Offline mode: transcript required';
+}
+
+/* =====================================================================
+   GAUGE (SVG arc, 270 degrees)
+   ===================================================================== */
+const GAUGE_ARC = 'M 43.43 156.57 A 80 80 0 1 1 156.57 156.57';
+function gaugeMarkup(size) {
+  let ticks = '';
+  for (let i = 0; i <= 10; i++) {
+    const deg = (-135 + 27 * i) * Math.PI / 180, inner = i % 5 === 0 ? 87 : 91;
+    ticks += `<line class="gauge-tick" x1="${100 + inner * Math.sin(deg)}" y1="${100 - inner * Math.cos(deg)}" x2="${100 + 97 * Math.sin(deg)}" y2="${100 - 97 * Math.cos(deg)}"/>`;
+  }
+  return `<svg viewBox="0 0 200 200" width="${size}" height="${size}" class="gauge" role="img" aria-label="Risk score gauge">
+    ${ticks}
+    <path d="${GAUGE_ARC}" class="gauge-track" pathLength="100"/>
+    <path d="${GAUGE_ARC}" class="gauge-glow" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"/>
+    <path d="${GAUGE_ARC}" class="gauge-value" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"/>
+    <text x="100" y="112" text-anchor="middle" class="gauge-num">--</text>
+    <text x="100" y="138" text-anchor="middle" class="gauge-cap" fill="${COLORS.dim}">NO DATA</text>
+  </svg>`;
+}
+function setGauge(svg, score) {
+  const value = svg.querySelector('.gauge-value'), glow = svg.querySelector('.gauge-glow');
+  const number = svg.querySelector('.gauge-num'), caption = svg.querySelector('.gauge-cap');
+  if (score === null || score === undefined) {
+    value.style.strokeDashoffset = glow.style.strokeDashoffset = 100;
+    number.textContent = '--'; caption.textContent = 'NO DATA'; caption.setAttribute('fill', COLORS.dim);
+    return;
+  }
+  const color = riskColor(score);
+  value.style.stroke = glow.style.stroke = color;
+  value.style.opacity = glow.style.opacity = score > 0 ? '' : 0;
+  caption.textContent = '/ 100'; caption.setAttribute('fill', color);
+  setTimeout(() => { value.style.strokeDashoffset = glow.style.strokeDashoffset = 100 - score; }, 40);
+  const start = performance.now();
+  const step = now => {
+    const p = Math.min(1, (now - start) / 950);
+    number.textContent = Math.round(score * (1 - Math.pow(1 - p, 3)));
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+/* =====================================================================
+   RESULT PANEL (used by the three scanners)
+   ===================================================================== */
+function emptyState(container, text) {
+  container.innerHTML = `<div class="text-center py-16 fade-in">
+    <div class="mx-auto w-[72px] h-[72px] badge-icon !rounded-[22px]">${icon('scan', 32)}</div>
+    <div class="text-lg font-bold mt-5">No analysis yet</div>
+    <div class="text-[13.5px] text-muted mt-2 max-w-sm mx-auto">${esc(text)}</div></div>`;
+}
+function loadingState(container, text) {
+  let seconds = 0;
+  container.innerHTML = `<div class="text-center py-16 fade-in">
+    <div class="mx-auto w-[72px] h-[72px] badge-icon !rounded-[22px]"><svg class="spin" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 12a9 9 0 1 1-6.2-8.6" stroke-linecap="round"/></svg></div>
+    <div class="text-lg font-bold mt-5">${esc(text)}</div>
+    <div class="text-[13px] text-muted mt-2">${state.ai ? 'Rule engine + Gemini' : 'Offline rule engine'} | <span data-timer>0</span>s</div></div>`;
+  const timer = container.querySelector('[data-timer]');
+  const interval = setInterval(() => { if (!timer.isConnected) return clearInterval(interval); timer.textContent = ++seconds; }, 1000);
+}
+
+function renderResult(container, r) {
+  const color = classColor(r.classification);
+  const noun = r.modality === 'VOICE' ? 'call' : r.modality === 'IMAGE' ? 'image' : 'email';
+  const headline = r.classification === 'HIGH RISK' ? ['Likely phishing', `Several strong warning signs were found. Treat this ${noun} as a scam.`]
+                 : r.classification === 'SUSPICIOUS' ? ['Be careful', `Some warning signs were found. Verify the ${noun} before you act on it.`]
+                 : ['Looks safe', `No strong phishing indicators were found in this ${noun}.`];
+  const hybrid = r.engine === 'HYBRID';
+  const engineInfo = hybrid
+    ? `<div class="flex flex-wrap gap-2 mt-3">
+         <span class="pill" style="--c:${COLORS.muted}">${icon('cpu', 12)} Rules ${r.ruleScore}</span>
+         <span class="pill" style="--c:${COLORS.accent}">${icon('sparkles', 12)} Gemini ${r.aiScore}</span>
+         <span class="pill" style="--c:${COLORS.blue}">40/60 blend</span></div>`
+    : `<div class="flex flex-wrap gap-2 mt-3"><span class="pill" style="--c:${COLORS.warn}">${icon('cpu', 12)} Rule engine only</span></div>`;
+
+  const aiIndicators = r.indicators.filter(i => i.category === 'AI');
+  const ruleIndicators = r.indicators.filter(i => i.category !== 'AI');
+  const severity = p => p >= 15 ? ['HIGH', COLORS.danger] : p >= 8 ? ['MEDIUM', COLORS.warn] : ['LOW', COLORS.accent];
+  const pointsColor = p => p < 0 ? COLORS.safe : p >= 15 ? COLORS.danger : p >= 8 ? COLORS.warn : COLORS.accent;
+
+  const row = (iconName, iconColor, title, detail, chip, mono = false) => `
+    <div class="row">
+      <div class="row-icon" style="--c:${iconColor}">${icon(iconName, 16)}</div>
+      <div class="flex-1 min-w-0">
+        ${title ? `<div class="font-bold text-[13.5px] ${mono ? 'mono font-medium break-all' : ''}">${esc(title)}</div>` : ''}
+        <div class="text-[12.8px] ${title ? 'text-muted mt-0.5' : 'text-[#c8d2e8]'} leading-relaxed break-words">${esc(detail)}</div>
+      </div>
+      ${chip || ''}
+    </div>`;
+  const section = (iconName, title, count, body) => `
+    <div class="space-y-2.5">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2.5 font-bold text-[15px]"><span class="text-accent">${icon(iconName, 17)}</span>${title}</div>
+        ${count !== null ? pill(String(count), count > 0 ? COLORS.accent : COLORS.dim) : ''}
+      </div>${body}</div>`;
+
+  let reasons = r.notes.map(n => row('info', COLORS.blue, null, n)).join('');
+  if (aiIndicators.length) {
+    reasons += `<div class="caption !text-accent pt-2 flex items-center gap-2">${icon('sparkles', 13)} Gemini AI findings</div>`;
+    reasons += aiIndicators.map(i => { const [label, c] = severity(i.points);
+      return row('sparkles', c, i.title, i.detail, `<span class="pill" style="--c:${c}">${label}</span>`); }).join('');
+  }
+  if (ruleIndicators.length) {
+    if (aiIndicators.length) reasons += `<div class="caption pt-2 flex items-center gap-2">${icon('cpu', 13)} Rule engine findings</div>`;
+    reasons += ruleIndicators.map(i => { const c = pointsColor(i.points);
+      return row(i.points < 0 ? 'check' : 'alert', c, i.title, i.detail, `<span class="pill" style="--c:${c}">${i.points > 0 ? '+' : ''}${i.points}</span>`); }).join('');
+  }
+
+  const urls = r.urls.length
+    ? r.urls.map(u => u.suspicious
+        ? row('link', COLORS.danger, u.url, 'Problems: ' + u.issues.join('; '), pill('UNSAFE', COLORS.danger), true)
+        : row('link', COLORS.safe, u.url, 'No problems found with this link.', pill('OK', COLORS.safe), true)).join('')
+    : row('info', COLORS.dim, null, 'No links were found in the text.');
+
+  const extracted = r.modality === 'IMAGE' && r.extractedText ? `
+    <details class="row !block" open><summary class="cursor-pointer font-bold text-[13.5px] flex items-center gap-2">
+      <span class="text-accent">${icon(hybrid ? 'sparkles' : 'file', 15)}</span>${hybrid ? 'Text read from the image by Gemini' : 'Text analysed'}</summary>
+      <div class="mt-2.5 text-[13px] text-[#c8d2e8] whitespace-pre-wrap max-h-48 overflow-auto scroll-thin">${esc(r.extractedText)}</div></details>` : '';
+  const transcript = r.modality === 'VOICE' && r.transcript ? `
+    <details class="row !block" open><summary class="cursor-pointer font-bold text-[13.5px] flex items-center gap-2">
+      <span class="text-accent">${icon('voice', 15)}</span>Transcript analysed</summary>
+      <div class="mt-2.5 text-[13px] text-[#c8d2e8] whitespace-pre-wrap max-h-48 overflow-auto scroll-thin">${esc(r.transcript)}</div></details>` : '';
+
+  container.innerHTML = `<div class="space-y-6 fade-in">
+    <div class="rounded-2xl bg-card2 border border-line p-4 flex flex-col sm:flex-row items-center gap-5">
+      <div class="shrink-0" data-gauge>${gaugeMarkup(160)}</div>
+      <div class="flex-1 min-w-0 w-full">
+        <div class="caption !text-dim">Risk assessment</div>
+        <div class="mt-2">${pill(r.classification, color)}</div>
+        <div class="text-xl font-extrabold mt-2.5">${headline[0]}</div>
+        <div class="text-[13px] text-muted mt-1">${headline[1]}</div>
+        ${engineInfo}
+        <div class="text-[12px] font-bold text-muted mt-3">Risk score ${r.score} / 100</div>
+        <div class="bar-track h-2.5 mt-1.5"><div class="bar-fill" data-bar style="width:0;background:linear-gradient(90deg,${color}99,${color})"></div></div>
+      </div>
+    </div>
+    ${r.aiVerdict ? `<div class="rounded-2xl p-4 border border-accent/30 bg-accent/5 flex gap-3">
+        <span class="text-accent mt-0.5">${icon('sparkles', 18)}</span>
+        <div><div class="caption !text-accent">Gemini verdict ${r.model ? '| ' + esc(r.model) : ''}</div>
+        <div class="text-[13.5px] mt-1 leading-relaxed">${esc(r.aiVerdict)}</div></div></div>` : ''}
+    ${!hybrid && r.aiStatus ? `<div class="rounded-2xl p-3.5 border border-warn/35 bg-warn/5 text-[12.8px] text-[#fdba74] flex gap-2.5">
+        <span class="mt-0.5">${icon('info', 16)}</span><span>${esc(r.aiStatus)}</span></div>` : ''}
+    ${extracted}${transcript}
+    ${section('alert', 'Why this was flagged', r.indicators.filter(i => i.points > 0).length, `<div class="space-y-2">${reasons}</div>`)}
+    ${r.modality !== 'VOICE' || r.urls.length ? section('link', 'Detected URLs', r.urls.filter(u => u.suspicious).length, `<div class="space-y-2">${urls}</div>`) : ''}
+    ${section('check', 'Recommended actions', r.recommendations.length,
+        `<div class="space-y-2">${r.recommendations.map(t => row('tick', COLORS.accent, null, t)).join('')}</div>`)}
+  </div>`;
+  setGauge(container.querySelector('[data-gauge] svg'), r.score);
+  setTimeout(() => { container.querySelector('[data-bar]').style.width = r.score + '%'; }, 40);
+}
+
+async function runScan({ button, container, loadingText, request, onDone }) {
+  setLoading(button, true, state.ai ? 'Analyzing with AI...' : 'Analyzing...');
+  loadingState(container, loadingText);
+  try {
+    const result = await request();
+    renderResult(container, result);
+    if (onDone) onDone(result);
+    state.dashboardLoaded = false;
+  } catch (e) {
+    emptyState(container, 'The analysis did not complete. Fix the problem shown in the message and try again.');
+    toast(e.message, 'error');
+  } finally {
+    setLoading(button, false);
+  }
+}
+
+/* =====================================================================
+   EMAIL SCANNER
+   ===================================================================== */
+function scanEmail() {
+  const payload = { sender: $('emailSender').value.trim(), subject: $('emailSubject').value.trim(), body: $('emailBody').value.trim() };
+  if (!payload.subject && !payload.body) return toast('Please enter the email subject or content before scanning.');
+  runScan({ button: $('emailScan'), container: $('emailResult'), loadingText: 'Analysing email...',
+    request: () => api('/api/scan/email', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }) });
+}
+$('emailScan').onclick = scanEmail;
+$('emailClear').onclick = () => { ['emailSender', 'emailSubject', 'emailBody'].forEach(id => $(id).value = ''); emptyState($('emailResult'), 'Fill in the email details and press Scan Email to see the risk score, the reasons and safety tips.'); };
+$('emailSample').onclick = () => {
+  const s = EMAIL_SAMPLES[state.emailSample];
+  $('emailSender').value = s.sender; $('emailSubject').value = s.subject; $('emailBody').value = s.body;
+  $('emailSample').querySelector('span:last-child').textContent = `Sample ${state.emailSample + 1}/4: ${s.label}`;
+  state.emailSample = (state.emailSample + 1) % EMAIL_SAMPLES.length;
+};
+
+/* =====================================================================
+   FILE UPLOAD HELPERS (drag & drop)
+   ===================================================================== */
+function setupDropzone(zone, input, onFile) {
+  zone.addEventListener('click', () => input.click());
+  zone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); } });
+  ['dragenter', 'dragover'].forEach(t => zone.addEventListener(t, e => { e.preventDefault(); zone.classList.add('drag'); }));
+  ['dragleave', 'drop'].forEach(t => zone.addEventListener(t, e => { e.preventDefault(); zone.classList.remove('drag'); }));
+  zone.addEventListener('drop', e => { if (e.dataTransfer.files[0]) onFile(e.dataTransfer.files[0]); });
+  input.addEventListener('change', () => { if (input.files[0]) onFile(input.files[0]); input.value = ''; });
+}
+function checkFile(file, extensions, kind) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!extensions.includes(ext)) { toast(`Unsupported ${kind} file. Please use ${extensions.map(e => e.toUpperCase()).join(', ')}.`); return false; }
+  if (file.size > 20 * 1024 * 1024) { toast(`The ${kind} is larger than 20 MB.`); return false; }
+  return true;
+}
+
+/* =====================================================================
+   IMAGE SCANNER
+   ===================================================================== */
+function setImageFile(file) {
+  if (!checkFile(file, ['png', 'jpg', 'jpeg', 'webp'], 'image')) return;
+  state.imageFile = file;
+  const url = URL.createObjectURL(file);
+  const img = $('imagePreview');
+  img.onload = () => { $('imageInfo').textContent = `${file.name} | ${img.naturalWidth} x ${img.naturalHeight} px | ${formatBytes(file.size)}`; };
+  img.src = url;
+  $('imageInfo').textContent = `${file.name} | ${formatBytes(file.size)}`;
+  $('imageDrop').classList.add('hidden');
+  $('imagePreviewBox').classList.remove('hidden');
+  emptyState($('imageResult'), 'Image ready. Press Analyze Image to scan it.');
+}
+function removeImage() {
+  state.imageFile = null;
+  $('imagePreview').removeAttribute('src');
+  $('imagePreviewBox').classList.add('hidden');
+  $('imageDrop').classList.remove('hidden');
+}
+setupDropzone($('imageDrop'), $('imageInput'), setImageFile);
+$('imageRemove').onclick = removeImage;
+$('imageSamples').innerHTML = IMAGE_SAMPLES.map((s, i) =>
+  `<button class="sample-chip" data-image-sample="${i}"><span class="w-2 h-2 rounded-full" style="background:${s.risk}"></span>${esc(s.label)}</button>`).join('');
+$('imageSamples').addEventListener('click', async e => {
+  const button = e.target.closest('[data-image-sample]');
+  if (!button) return;
+  const sample = IMAGE_SAMPLES[button.dataset.imageSample];
+  try {
+    const blob = await (await fetch('samples/images/' + sample.file)).blob();
+    setImageFile(new File([blob], sample.file, { type: 'image/png' }));
+    // With Gemini the text is read from the image; offline we fill it in for you.
+    $('imageText').value = state.ai ? '' : sample.text;
+  } catch (err) { toast('Could not load the sample image.'); }
+});
+function scanImage() {
+  const text = $('imageText').value.trim();
+  if (!state.imageFile && !text) return toast('Please upload an image or type the text from it.');
+  if (!state.ai && !text) return toast('Offline mode cannot read images. Please type the text you can see in the image.');
+  const form = new FormData();
+  if (state.imageFile) form.append('image', state.imageFile);
+  if (text) form.append('extractedText', text);
+  runScan({ button: $('imageScan'), container: $('imageResult'),
+    loadingText: state.ai && state.imageFile ? 'Gemini is reading the image...' : 'Analysing image text...',
+    request: () => api('/api/scan/image', { method: 'POST', body: form }),
+    onDone: r => {
+      if (r.engine === 'HYBRID' && r.extractedText && !$('imageText').value.trim()) {
+        $('imageText').value = r.extractedText;
+        $('imageText').classList.remove('flash'); void $('imageText').offsetWidth; $('imageText').classList.add('flash');
+      }
+    } });
+}
+$('imageScan').onclick = scanImage;
+$('imageClear').onclick = () => { removeImage(); $('imageText').value = ''; emptyState($('imageResult'), 'Upload an image (or pick a sample) and press Analyze Image.'); };
+
+/* =====================================================================
+   VOICE SCANNER
+   ===================================================================== */
+function setAudioFile(file) {
+  if (!checkFile(file, ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'], 'audio')) return;
+  state.audioFile = file;
+  $('audioPlayer').src = URL.createObjectURL(file);
+  $('audioInfo').textContent = `${file.name} | ${formatBytes(file.size)}`;
+  $('audioDrop').classList.add('hidden');
+  $('audioBox').classList.remove('hidden');
+  emptyState($('voiceResult'), 'Recording ready. Press Analyze Call to transcribe and scan it.');
+}
+function removeAudio() {
+  state.audioFile = null;
+  $('audioPlayer').pause();
+  $('audioPlayer').removeAttribute('src');
+  $('audioBox').classList.add('hidden');
+  $('audioDrop').classList.remove('hidden');
+}
+setupDropzone($('audioDrop'), $('audioInput'), setAudioFile);
+$('audioRemove').onclick = removeAudio;
+$('voiceSamples').innerHTML = VOICE_SAMPLES.map((s, i) =>
+  `<button class="sample-chip" data-voice-sample="${i}"><span class="w-2 h-2 rounded-full" style="background:${s.risk}"></span>${esc(s.label)}</button>`).join('');
+$('voiceSamples').addEventListener('click', async e => {
+  const button = e.target.closest('[data-voice-sample]');
+  if (!button) return;
+  const sample = VOICE_SAMPLES[button.dataset.voiceSample];
+  $('voiceCaller').value = sample.caller;
+  if (sample.audio) {
+    try {
+      const blob = await (await fetch('samples/audio/' + sample.audio)).blob();
+      setAudioFile(new File([blob], sample.audio, { type: 'audio/wav' }));
+      // With Gemini the recording is transcribed; offline we fill in the transcript.
+      $('voiceTranscript').value = state.ai ? '' : sample.text;
+    } catch (err) { toast('Could not load the sample recording.'); }
+  } else {
+    removeAudio();
+    $('voiceTranscript').value = sample.text;
+  }
+});
+function scanVoice() {
+  const transcript = $('voiceTranscript').value.trim();
+  if (!state.audioFile && !transcript) return toast('Please upload a call recording or type the transcript.');
+  if (!state.ai && !transcript) return toast('Offline mode cannot transcribe audio. Please type or paste the transcript.');
+  const form = new FormData();
+  if (state.audioFile) form.append('audio', state.audioFile);
+  if (transcript) form.append('transcript', transcript);
+  form.append('caller', $('voiceCaller').value.trim());
+  runScan({ button: $('voiceScan'), container: $('voiceResult'),
+    loadingText: state.ai && state.audioFile ? 'Gemini is transcribing the call...' : 'Analysing transcript...',
+    request: () => api('/api/scan/voice', { method: 'POST', body: form }),
+    onDone: r => {
+      if (r.engine === 'HYBRID' && state.audioFile && r.transcript && !$('voiceTranscript').value.trim()) {
+        $('voiceTranscript').value = r.transcript;
+        $('voiceTranscript').classList.remove('flash'); void $('voiceTranscript').offsetWidth; $('voiceTranscript').classList.add('flash');
+      }
+    } });
+}
+$('voiceScan').onclick = scanVoice;
+$('voiceClear').onclick = () => { removeAudio(); $('voiceTranscript').value = ''; $('voiceCaller').value = ''; emptyState($('voiceResult'), 'Upload a recording or paste a transcript and press Analyze Call.'); };
+
+// Ctrl+Enter runs the scan of the page you are on
+document.addEventListener('keydown', e => {
+  if (!(e.ctrlKey || e.metaKey) || e.key !== 'Enter') return;
+  const page = location.hash.slice(1);
+  if (page === 'email') scanEmail(); else if (page === 'image') scanImage(); else if (page === 'voice') scanVoice();
+});
+
+/* =====================================================================
+   DASHBOARD
+   ===================================================================== */
+async function loadDashboard() {
+  try {
+    const data = await api('/api/dashboard');
+    renderEngineBadge(data.status);
+    renderStats(data.stats);
+    renderMultimodal(data.multimodal);
+    renderDonut(data.stats);
+    renderRecent(data.recent);
+    renderTypeChart(data.byType);
+    state.dashboardLoaded = true;
+  } catch (e) { toast('Could not load the dashboard: ' + e.message); }
+}
+
+function renderStats(s) {
+  const pct = n => s.total ? Math.round(100 * n / s.total) : 0;
+  const cards = [
+    ['Total Scans', s.total, s.total ? 'Saved in scan_history.csv' : 'No scans saved yet', s.total ? 100 : 0, COLORS.accent, 'target'],
+    ['Phishing Detected', s.high, pct(s.high) + '% of all scans', pct(s.high), COLORS.danger, 'alert'],
+    ['Suspicious', s.suspicious, pct(s.suspicious) + '% of all scans', pct(s.suspicious), COLORS.warn, 'info'],
+    ['Safe Scans', s.safe, pct(s.safe) + '% of all scans', pct(s.safe), COLORS.safe, 'check']
+  ];
+  $('statCards').innerHTML = cards.map(([title, value, sub, share, color, iconName]) => `
+    <div class="card p-5 relative overflow-hidden fade-in">
+      <div class="absolute -top-10 -right-10 w-40 h-40 rounded-full pointer-events-none" style="background:radial-gradient(circle,${color}33,transparent 70%)"></div>
+      <div class="flex justify-between items-start relative">
+        <div class="text-[13px] font-bold text-muted">${title}</div>
+        <div class="badge-icon w-11 h-11" style="--c:${color}">${icon(iconName, 21)}</div>
+      </div>
+      <div class="text-[34px] font-extrabold leading-none -mt-2 relative">${value}</div>
+      <div class="text-[12px] text-dim mt-2 relative">${sub}</div>
+      <div class="bar-track h-1 mt-4 relative"><div class="bar-fill" style="width:${share}%;background:linear-gradient(90deg,${color}88,${color})"></div></div>
+    </div>`).join('');
+}
+
+function renderMultimodal(mm) {
+  if (!$('mmGauge').firstChild) $('mmGauge').innerHTML = gaugeMarkup(165);
+  const combined = mm.combined;
+  setGauge($('mmGauge').querySelector('svg'), combined ? combined.score : null);
+  $('mmPill').innerHTML = combined ? pill(combined.classification, classColor(combined.classification)) : pill('AWAITING SCANS', COLORS.dim);
+  $('mmRows').innerHTML = ['EMAIL', 'IMAGE', 'VOICE'].map(m => {
+    const score = mm.scores[m], meta = MODALITY[m];
+    return `<div class="flex items-center gap-3">
+      <span style="color:${meta.color}">${icon(meta.icon, 18)}</span>
+      <span class="w-14 font-bold text-[13.5px]">${meta.name}</span>
+      <div class="bar-track h-2.5 flex-1 relative">${score === null
+        ? '<span class="absolute left-2.5 -top-[3px] text-[11px] italic text-dim">not scanned yet</span>'
+        : `<div class="bar-fill" style="width:${Math.max(4, score)}%;background:linear-gradient(90deg,${riskColor(score)}99,${riskColor(score)})"></div>`}</div>
+      <span class="w-9 text-right font-extrabold" style="color:${score === null ? COLORS.dim : riskColor(score)}">${score === null ? '--' : score}</span>
+    </div>`;
+  }).join('');
+  $('mmFormula').innerHTML = combined ? `Overall = ${esc(mm.formula)}` : 'Run a scan to build a combined score.';
+  const top = combined ? combined.indicators.slice(0, 4) : [];
+  $('mmIndicators').innerHTML = !combined ? '<div class="text-dim">No indicators yet.</div>'
+    : !top.length ? `<div style="color:${COLORS.safe}">No indicators - all scanned content looks safe.</div>`
+    : top.map(i => { const c = i.points >= 15 ? COLORS.danger : i.points >= 8 ? COLORS.warn : COLORS.accent;
+        return `<div class="flex items-center gap-2.5 min-w-0" title="${esc(i.detail)}"><span class="w-2 h-2 rounded-full shrink-0" style="background:${c}"></span>
+          <span class="truncate flex-1">${esc(i.title)}</span><span class="font-bold shrink-0" style="color:${c}">${i.category === 'AI' ? 'AI' : '+' + i.points}</span></div>`; }).join('');
+  $('mmSave').disabled = $('mmReset').disabled = !combined;
+}
+$('mmSave').onclick = async () => {
+  try { const r = await api('/api/multimodal/save', { method: 'POST' });
+        toast(`Multimodal report saved (score ${r.score}, ${r.classification}).`, 'success'); loadDashboard(); }
+  catch (e) { toast(e.message); }
+};
+$('mmReset').onclick = async () => {
+  try { await api('/api/multimodal/reset', { method: 'POST' }); toast('Session reset - the multimodal score starts fresh.', 'success'); loadDashboard(); }
+  catch (e) { toast(e.message); }
+};
+
+function renderDonut(s) {
+  const parts = [[s.high, COLORS.danger, 'High risk'], [s.suspicious, COLORS.warn, 'Suspicious'], [s.safe, COLORS.safe, 'Low risk']];
+  const used = parts.filter(p => p[0] > 0).length;
+  let offset = 0, arcs = '';
+  for (const [value, color] of parts) {
+    if (!value) continue;
+    const pct = 100 * value / s.total, gap = used > 1 ? 1.2 : 0, dash = Math.max(pct - gap, 0.1);
+    arcs += `<circle cx="100" cy="100" r="72" fill="none" stroke="${color}" stroke-width="24" pathLength="100"
+               stroke-dasharray="${dash} ${100 - dash}" stroke-dashoffset="${-offset}" transform="rotate(-90 100 100)"/>`;
+    offset += pct;
+  }
+  $('donut').innerHTML = `<div class="flex flex-col sm:flex-row items-center gap-7">
+    <svg viewBox="0 0 200 200" width="190" height="190" class="shrink-0">
+      <circle cx="100" cy="100" r="72" fill="none" stroke="#212e4b" stroke-width="24"/>${arcs}
+      <text x="100" y="106" text-anchor="middle" style="font:800 40px Inter,sans-serif" fill="#e8eefc">${s.total}</text>
+      <text x="100" y="128" text-anchor="middle" style="font:500 13px Inter,sans-serif" fill="#8a98b4">${s.total === 1 ? 'scan' : 'scans'}</text>
+    </svg>
+    <div class="space-y-4">${parts.map(([value, color, name]) => `
+      <div class="flex gap-3"><span class="w-3 h-3 rounded mt-1" style="background:${color}"></span>
+        <div><div class="font-bold text-[13.5px]">${name}</div>
+        <div class="text-[12.5px] text-muted">${value} ${value === 1 ? 'scan' : 'scans'} | ${s.total ? Math.round(100 * value / s.total) : 0}%</div></div></div>`).join('')}
+    </div></div>`;
+}
+
+function renderRecent(recent) {
+  $('recentList').innerHTML = !recent.length
+    ? `<div class="text-center py-10"><div class="mx-auto w-14 h-14 badge-icon">${icon('activity', 24)}</div>
+         <div class="font-bold mt-4">No scans yet</div><div class="text-[13px] text-muted mt-1">Open a scanner to analyse your first message.</div></div>`
+    : recent.map((r, i) => { const meta = MODALITY[r.scanType] || MODALITY.MULTIMODAL;
+        return `<div class="flex items-center gap-4 py-3 ${i < recent.length - 1 ? 'border-b border-[#1c2842]' : ''}">
+          <div class="badge-icon w-10 h-10" style="--c:${meta.color}">${icon(meta.icon, 18)}</div>
+          <div class="flex-1 min-w-0"><div class="font-bold text-[14px]">${meta.name} scan</div>
+            <div class="text-[12.5px] text-muted truncate" title="${esc(r.summary)}">${esc(r.summary)}</div></div>
+          <div class="text-right shrink-0">${pill(r.classification, classColor(r.classification))}
+            <div class="text-[11.5px] text-dim mt-1.5">Score ${r.riskScore} | ${friendlyTime(r.dateTime)}</div></div></div>`; }).join('');
+}
+
+function renderTypeChart(byType) {
+  const entries = [['EMAIL', 'Email'], ['IMAGE', 'Image'], ['VOICE', 'Voice'], ['MULTIMODAL', 'Multi']];
+  const max = Math.max(4, ...entries.map(([k]) => byType[k] || 0));
+  $('typeChart').innerHTML = `<div class="relative h-56">
+      ${[0, 1, 2, 3, 4].map(i => `<div class="absolute left-0 right-0 border-t border-dashed border-line/70" style="bottom:${i * 25}%"></div>`).join('')}
+      <div class="absolute inset-0 flex items-end justify-around px-2">${entries.map(([key]) => {
+        const value = byType[key] || 0, color = MODALITY[key].color;
+        return `<div class="flex flex-col items-center justify-end h-full w-12">
+          <span class="text-[13px] font-bold mb-1.5">${value}</span>
+          <div class="w-full rounded-t-[10px] transition-all duration-700" style="height:${(value / max) * 88}%;min-height:${value ? 6 : 0}px;
+               background:linear-gradient(180deg,${color},${color}40)"></div></div>`; }).join('')}</div>
+    </div>
+    <div class="flex justify-around px-2 mt-2.5 text-[12px] text-muted">${entries.map(([, label]) => `<span class="w-12 text-center">${label}</span>`).join('')}</div>`;
+}
+
+/* =====================================================================
+   HISTORY
+   ===================================================================== */
+async function loadHistory() {
+  try { state.history = await api('/api/history'); renderHistory(); }
+  catch (e) { toast('Could not load the history: ' + e.message); }
+}
+function renderHistory() {
+  const query = $('historySearch').value.trim().toLowerCase();
+  const rows = state.history.filter(r => !query ||
+    [r.dateTime, r.scanType, r.riskScore, r.classification, r.summary].join(' ').toLowerCase().includes(query));
+  $('historyBody').innerHTML = rows.length ? rows.map(r => { const meta = MODALITY[r.scanType] || MODALITY.MULTIMODAL, c = riskColor(r.riskScore);
+    return `<tr>
+      <td class="text-muted whitespace-nowrap">${esc(r.dateTime)}</td>
+      <td><span class="pill !normal-case !tracking-normal" style="--c:${meta.color}">${icon(meta.icon, 13)}${meta.name}</span></td>
+      <td><div class="flex items-center gap-2.5"><span class="font-extrabold w-8" style="color:${c}">${r.riskScore}</span>
+        <div class="bar-track h-1.5 w-20"><div class="bar-fill" style="width:${Math.max(6, r.riskScore)}%;background:${c}"></div></div></div></td>
+      <td>${pill(r.classification, classColor(r.classification))}</td>
+      <td class="text-[#c4cee2] max-w-[520px] truncate" title="${esc(r.summary)}">${esc(r.summary)}</td></tr>`; }).join('')
+    : `<tr><td colspan="5" class="text-center !py-14 text-muted">${state.history.length ? 'No scans match your search.' : 'No scans saved yet - run a scan to see it here.'}</td></tr>`;
+  $('historyCount').textContent = state.history.length ? `Showing ${rows.length} of ${state.history.length} scans` : '';
+}
+$('historySearch').addEventListener('input', renderHistory);
+$('historyRefresh').onclick = loadHistory;
+$('historyClear').onclick = async () => {
+  if (!state.history.length) return toast('The history is already empty.', 'info');
+  if (!await askConfirm('Clear scan history?', `All ${state.history.length} saved scans will be deleted. This cannot be undone.`)) return;
+  try { await api('/api/history', { method: 'DELETE' }); toast('Scan history cleared.', 'success'); loadHistory(); state.dashboardLoaded = false; }
+  catch (e) { toast(e.message); }
+};
+
+/* =====================================================================
+   START
+   ===================================================================== */
+fillIcons();
+emptyState($('emailResult'), 'Fill in the email details and press Scan Email to see the risk score, the reasons and safety tips.');
+emptyState($('imageResult'), 'Upload an image (or pick a sample) and press Analyze Image.');
+emptyState($('voiceResult'), 'Upload a recording or paste a transcript and press Analyze Call.');
+api('/api/status').then(renderEngineBadge).catch(() => toast('Cannot reach the server API.'));
+showPage(location.hash.slice(1) || 'dashboard');
+</script>
+</body>
+</html>

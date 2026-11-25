@@ -1,0 +1,12 @@
+# Build output
+target/
+out/
+
+# IntelliJ
+.idea/
+*.iml
+
+# Runtime data and secrets - never commit your API key
+scan_history.csv
+.env
+*.log

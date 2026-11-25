@@ -1,0 +1,9 @@
+target/
+out/
+.idea/
+*.iml
+.git/
+.env
+scan_history.csv
+desktop-swing/
+*.md
